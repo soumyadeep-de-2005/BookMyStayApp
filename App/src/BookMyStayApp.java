@@ -1,158 +1,153 @@
-/*
-================================================================================================================
-MAIN CLASS - BookMyStayApp
-================================================================================================================
+import java.util.*;
 
-Use Case 3: Centralized Room Inventory Management
+// Reservation Request
+class Reservation {
+    private String guestName;
+    private String roomType;
 
-Description:
-This program illustrates centralized inventory management for hotel rooms using a HashMap.
-Rather than tracking room availability across multiple scattered variables, the system introduces a dedicated RoomInventory component, which is responsible for maintaining and managing availability for all room types.
-Room objects continue to model the characteristics of each room type, leveraging abstraction, inheritance, encapsulation, and polymorphism. However, the availability of rooms is now consolidated into a single HashMap that associates each room type with its available count. The inventory class offers controlled methods to access and update availability, ensuring a consistent and reliable state across the system.
-This approach establishes a single source of truth, enhances scalability, and clearly separates the responsibilities of room modeling from inventory management logic.
-
-================================================================================================================
-*/
-
-import java.util.HashMap;
-
-abstract class Room
-{
-    private int beds;
-    private int size;
-    private double price;
-
-    public Room(int beds,int size,double price)
-    {
-        this.beds=beds;
-        this.size=size;
-        this.price=price;
+    public Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 
-    public int getBeds()
-    {
-        return beds;
+    public String getGuestName() {
+        return guestName;
     }
 
-    public int getSize()
-    {
-        return size;
-    }
-
-    public double getPrice()
-    {
-        return price;
-    }
-
-    public abstract String getRoomType();
-
-    public void displayRoomDetails()
-    {
-        System.out.println("Room Type: "+getRoomType());
-        System.out.println("Beds: "+beds);
-        System.out.println("Size: "+size+" sq.ft");
-        System.out.println("Price per night: "+price);
+    public String getRoomType() {
+        return roomType;
     }
 }
 
-class SingleRoom extends Room
-{
-    public SingleRoom()
-    {
-        super(1,200,1000);
+// Thread-Safe Inventory
+class InventoryService {
+    private Map<String, Integer> inventory = new HashMap<>();
+
+    public void addRoomType(String type, int count) {
+        inventory.put(type, count);
     }
 
-    public String getRoomType()
-    {
-        return "Single Room";
-    }
-}
+    // Critical Section (synchronized)
+    public synchronized boolean allocateRoom(String type) {
+        int available = inventory.getOrDefault(type, 0);
 
-class DoubleRoom extends Room
-{
-    public DoubleRoom()
-    {
-        super(2,350,1800);
+        if (available > 0) {
+            inventory.put(type, available - 1);
+            return true;
+        }
+        return false;
     }
 
-    public String getRoomType()
-    {
-        return "Double Room";
-    }
-}
-
-class SuiteRoom extends Room
-{
-    public SuiteRoom()
-    {
-        super(3,600,3500);
-    }
-
-    public String getRoomType()
-    {
-        return "Suite Room";
-    }
-}
-
-class RoomInventory
-{
-    private HashMap<String,Integer> inventory;
-
-    public RoomInventory()
-    {
-        inventory=new HashMap<String,Integer>();
-        inventory.put("Single Room",5);
-        inventory.put("Double Room",3);
-        inventory.put("Suite Room",2);
-    }
-
-    public int getAvailability(String roomType)
-    {
-        return inventory.get(roomType);
-    }
-
-    public void updateAvailability(String roomType,int count)
-    {
-        inventory.put(roomType,count);
-    }
-
-    public void displayInventory()
-    {
-        for(String roomType:inventory.keySet())
-        {
-            System.out.println(roomType+" Available: "+inventory.get(roomType));
+    public synchronized void displayInventory() {
+        System.out.println("\nFinal Inventory State:");
+        for (String type : inventory.keySet()) {
+            System.out.println(type + " → " + inventory.get(type));
         }
     }
 }
 
-public class BookMyStayApp
-{
-    public static void main(String args[])
-    {
-        System.out.println("Welcome to Hotel Booking Management System!");
-        System.out.println("Version: 3.0");
-        System.out.println("Author: vaanikpandit2825");
-        System.out.println();
+// Shared Booking Queue
+class BookingQueue {
+    private Queue<Reservation> queue = new LinkedList<>();
 
-        Room single=new SingleRoom();
-        Room doubleRoom=new DoubleRoom();
-        Room suite=new SuiteRoom();
+    // synchronized enqueue
+    public synchronized void addRequest(Reservation r) {
+        queue.offer(r);
+    }
 
-        RoomInventory inventory=new RoomInventory();
+    // synchronized dequeue
+    public synchronized Reservation getRequest() {
+        return queue.poll();
+    }
+}
 
-        single.displayRoomDetails();
-        System.out.println("Available Rooms: "+inventory.getAvailability(single.getRoomType()));
-        System.out.println();
+// Booking Processor (Thread)
+class BookingProcessor extends Thread {
 
-        doubleRoom.displayRoomDetails();
-        System.out.println("Available Rooms: "+inventory.getAvailability(doubleRoom.getRoomType()));
-        System.out.println();
+    private BookingQueue queue;
+    private InventoryService inventory;
 
-        suite.displayRoomDetails();
-        System.out.println("Available Rooms: "+inventory.getAvailability(suite.getRoomType()));
-        System.out.println();
+    public BookingProcessor(String name, BookingQueue queue, InventoryService inventory) {
+        super(name);
+        this.queue = queue;
+        this.inventory = inventory;
+    }
 
-        System.out.println("Current Inventory State:");
+    @Override
+    public void run() {
+
+        while (true) {
+
+            Reservation r;
+
+            // synchronized access to queue
+            synchronized (queue) {
+                r = queue.getRequest();
+            }
+
+            if (r == null) {
+                break; // no more requests
+            }
+
+            processBooking(r);
+        }
+    }
+
+    private void processBooking(Reservation r) {
+
+        System.out.println(Thread.currentThread().getName() +
+                " processing → " + r.getGuestName());
+
+        // Critical Section (Inventory)
+        boolean success = inventory.allocateRoom(r.getRoomType());
+
+        if (success) {
+            System.out.println("✅ " + r.getGuestName() +
+                    " booked " + r.getRoomType());
+        } else {
+            System.out.println("❌ " + r.getGuestName() +
+                    " failed (No availability)");
+        }
+    }
+}
+
+// Main Class
+public class UseCase11ConcurrentBookingSimulation {
+
+    public static void main(String[] args) {
+
+        // Step 1: Setup Inventory
+        InventoryService inventory = new InventoryService();
+        inventory.addRoomType("Single", 2);
+
+        // Step 2: Shared Booking Queue
+        BookingQueue queue = new BookingQueue();
+
+        // Simulate multiple guest requests
+        queue.addRequest(new Reservation("Amit", "Single"));
+        queue.addRequest(new Reservation("Priya", "Single"));
+        queue.addRequest(new Reservation("Rahul", "Single"));
+        queue.addRequest(new Reservation("Sneha", "Single"));
+
+        // Step 3: Create multiple threads
+        BookingProcessor t1 = new BookingProcessor("Thread-1", queue, inventory);
+        BookingProcessor t2 = new BookingProcessor("Thread-2", queue, inventory);
+
+        // Step 4: Start threads
+        t1.start();
+        t2.start();
+
+        // Step 5: Wait for completion
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        // Step 6: Final inventory
         inventory.displayInventory();
+
+        System.out.println("\n(All bookings processed safely with synchronization)");
     }
 }
