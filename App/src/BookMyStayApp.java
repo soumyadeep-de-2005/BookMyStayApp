@@ -1,158 +1,118 @@
-/*
-================================================================================================================
-MAIN CLASS - BookMyStayApp
-================================================================================================================
+import java.util.*;
 
-Use Case 3: Centralized Room Inventory Management
+// Reservation (Confirmed Booking)
+class Reservation {
+    private String reservationId;
+    private String guestName;
+    private String roomType;
+    private String roomId;
 
-Description:
-This program illustrates centralized inventory management for hotel rooms using a HashMap.
-Rather than tracking room availability across multiple scattered variables, the system introduces a dedicated RoomInventory component, which is responsible for maintaining and managing availability for all room types.
-Room objects continue to model the characteristics of each room type, leveraging abstraction, inheritance, encapsulation, and polymorphism. However, the availability of rooms is now consolidated into a single HashMap that associates each room type with its available count. The inventory class offers controlled methods to access and update availability, ensuring a consistent and reliable state across the system.
-This approach establishes a single source of truth, enhances scalability, and clearly separates the responsibilities of room modeling from inventory management logic.
-
-================================================================================================================
-*/
-
-import java.util.HashMap;
-
-abstract class Room
-{
-    private int beds;
-    private int size;
-    private double price;
-
-    public Room(int beds,int size,double price)
-    {
-        this.beds=beds;
-        this.size=size;
-        this.price=price;
+    public Reservation(String reservationId, String guestName, String roomType, String roomId) {
+        this.reservationId = reservationId;
+        this.guestName = guestName;
+        this.roomType = roomType;
+        this.roomId = roomId;
     }
 
-    public int getBeds()
-    {
-        return beds;
+    public String getReservationId() {
+        return reservationId;
     }
 
-    public int getSize()
-    {
-        return size;
+    public String getGuestName() {
+        return guestName;
     }
 
-    public double getPrice()
-    {
-        return price;
+    public String getRoomType() {
+        return roomType;
     }
 
-    public abstract String getRoomType();
+    public String getRoomId() {
+        return roomId;
+    }
 
-    public void displayRoomDetails()
-    {
-        System.out.println("Room Type: "+getRoomType());
-        System.out.println("Beds: "+beds);
-        System.out.println("Size: "+size+" sq.ft");
-        System.out.println("Price per night: "+price);
+    public void display() {
+        System.out.println("Reservation ID: " + reservationId +
+                " | Guest: " + guestName +
+                " | Room Type: " + roomType +
+                " | Room ID: " + roomId);
     }
 }
 
-class SingleRoom extends Room
-{
-    public SingleRoom()
-    {
-        super(1,200,1000);
+// Booking History (State Holder)
+class BookingHistory {
+
+    private List<Reservation> history = new ArrayList<>();
+
+    // Add confirmed booking
+    public void addReservation(Reservation reservation) {
+        history.add(reservation);
     }
 
-    public String getRoomType()
-    {
-        return "Single Room";
-    }
-}
-
-class DoubleRoom extends Room
-{
-    public DoubleRoom()
-    {
-        super(2,350,1800);
-    }
-
-    public String getRoomType()
-    {
-        return "Double Room";
+    // Get all bookings (READ-ONLY)
+    public List<Reservation> getAllReservations() {
+        return Collections.unmodifiableList(history); // defensive programming
     }
 }
 
-class SuiteRoom extends Room
-{
-    public SuiteRoom()
-    {
-        super(3,600,3500);
-    }
+// Booking Report Service
+class BookingReportService {
 
-    public String getRoomType()
-    {
-        return "Suite Room";
-    }
-}
+    // Display full history
+    public void displayAllBookings(List<Reservation> reservations) {
+        System.out.println("\n===== Booking History =====\n");
 
-class RoomInventory
-{
-    private HashMap<String,Integer> inventory;
-
-    public RoomInventory()
-    {
-        inventory=new HashMap<String,Integer>();
-        inventory.put("Single Room",5);
-        inventory.put("Double Room",3);
-        inventory.put("Suite Room",2);
-    }
-
-    public int getAvailability(String roomType)
-    {
-        return inventory.get(roomType);
-    }
-
-    public void updateAvailability(String roomType,int count)
-    {
-        inventory.put(roomType,count);
-    }
-
-    public void displayInventory()
-    {
-        for(String roomType:inventory.keySet())
-        {
-            System.out.println(roomType+" Available: "+inventory.get(roomType));
+        for (Reservation r : reservations) {
+            r.display();
         }
     }
+
+    // Generate summary report
+    public void generateSummary(List<Reservation> reservations) {
+        System.out.println("\n===== Booking Summary Report =====\n");
+
+        Map<String, Integer> roomTypeCount = new HashMap<>();
+
+        for (Reservation r : reservations) {
+            roomTypeCount.put(
+                    r.getRoomType(),
+                    roomTypeCount.getOrDefault(r.getRoomType(), 0) + 1
+            );
+        }
+
+        for (String type : roomTypeCount.keySet()) {
+            System.out.println(type + " Rooms Booked: " + roomTypeCount.get(type));
+        }
+
+        System.out.println("\nTotal Bookings: " + reservations.size());
+    }
 }
 
-public class BookMyStayApp
-{
-    public static void main(String args[])
-    {
-        System.out.println("Welcome to Hotel Booking Management System!");
-        System.out.println("Version: 3.0");
-        System.out.println("Author: vaanikpandit2825");
-        System.out.println();
+// Main Class
+public class UseCase8BookingHistoryReport {
 
-        Room single=new SingleRoom();
-        Room doubleRoom=new DoubleRoom();
-        Room suite=new SuiteRoom();
+    public static void main(String[] args) {
 
-        RoomInventory inventory=new RoomInventory();
+        // Step 1: Create Booking History
+        BookingHistory history = new BookingHistory();
 
-        single.displayRoomDetails();
-        System.out.println("Available Rooms: "+inventory.getAvailability(single.getRoomType()));
-        System.out.println();
+        // Step 2: Add confirmed bookings (simulate Use Case 6 output)
+        history.addReservation(new Reservation("RES-101", "Amit", "Single", "SI-1"));
+        history.addReservation(new Reservation("RES-102", "Priya", "Deluxe", "DE-2"));
+        history.addReservation(new Reservation("RES-103", "Rahul", "Single", "SI-3"));
+        history.addReservation(new Reservation("RES-104", "Karan", "Double", "DO-4"));
 
-        doubleRoom.displayRoomDetails();
-        System.out.println("Available Rooms: "+inventory.getAvailability(doubleRoom.getRoomType()));
-        System.out.println();
+        // Step 3: Admin retrieves history
+        List<Reservation> allBookings = history.getAllReservations();
 
-        suite.displayRoomDetails();
-        System.out.println("Available Rooms: "+inventory.getAvailability(suite.getRoomType()));
-        System.out.println();
+        // Step 4: Reporting Service
+        BookingReportService reportService = new BookingReportService();
 
-        System.out.println("Current Inventory State:");
-        inventory.displayInventory();
+        // Display full history
+        reportService.displayAllBookings(allBookings);
+
+        // Generate summary
+        reportService.generateSummary(allBookings);
+
+        System.out.println("\n(Note: Reporting is read-only and does not modify history)");
     }
 }
